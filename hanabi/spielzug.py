@@ -26,7 +26,9 @@ class Hinweis(Spielzug):
         passendeKarten = [i for i, karte in enumerate(handKarten) if karte.ist(self.hinweis) ]
         for spieler in spiel.spieler:
             spieler.hinweis(self.zielSpieler, self.hinweis, passendeKarten)
-        
+    
+    def __str__(self):
+        return "{} den Hinweis {} geben".format(self.zielSpieler, self.hinweis)
         
 class Abwerfen(Spielzug):
     
@@ -38,9 +40,12 @@ class Abwerfen(Spielzug):
             spiel.verfügbareHinweise += 1
         karte = spiel.handKarten[spiel.aktuellerSpieler][self.position]
         spiel.abwurfStapel.append(karte)
+        spiel.zieheKarte(spiel.aktuellerSpieler, self.position)
         for spieler in spiel.spieler:
             spieler.karteAbgeworfen(karte)
-        spiel.zieheKarte(spiel.aktuellerSpieler, self.position)
+    
+    def __str__(self):
+        return "Karte {} abwerfen".format(self.position)
         
         
 class Ablegen(Spielzug):
@@ -61,3 +66,6 @@ class Ablegen(Spielzug):
                 spieler.karteAbgeworfen(karte)
             spiel.blitze += 1
             spiel.zieheKarte(spiel.aktuellerSpieler, self.position)
+    
+    def __str__(self):
+        return "Karte {} ablegen".format(self.position)

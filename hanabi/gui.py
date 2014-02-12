@@ -57,7 +57,10 @@ class HanabiFenster(QtGui.QWidget):
         kartenGebenButton.clicked.connect(self.initSpiel)
         autoZugButton = QtGui.QPushButton("KI-Zug")
         autoZugButton.clicked.connect(self.autoSpielzug)
+        spielDurchlaufenButton = QtGui.QPushButton("KI bis ende")
+        spielDurchlaufenButton.clicked.connect(self.durchlaufen)
         buttonBox.addWidget(autoZugButton)
+        buttonBox.addWidget(spielDurchlaufenButton)
         layout.addLayout(buttonBox)
         
         self.setLayout(layout)
@@ -74,16 +77,25 @@ class HanabiFenster(QtGui.QWidget):
     
     
     def autoSpielzug(self):
-        self.triggerSpielzug(self.spiel.aktuellerSpieler.macheSpielzug())
+        return self.triggerSpielzug(self.spiel.aktuellerSpieler.macheSpielzug())
+    
+    def durchlaufen(self):
+        while True:
+            if not self.autoSpielzug():
+                break
     
     def triggerSpielzug(self, spielzug):
         try:
             self.spiel.spielzug(spielzug)
+            return True
         except UngültigerZug as e:
             QtGui.QMessageBox.warning(self, "Ungültiger Zug", str(e))
+            return False
         except SpielEnde as e:
             QtGui.QMessageBox.information(self, "Spielende", str(e))
-        self.aktualisiere()
+            return False
+        finally:
+            self.aktualisiere()
         
     def initSpiel(self):
         self.spiel.kartenGeben()
@@ -150,7 +162,9 @@ class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
         for i, karte in enumerate(self.spiel.handKarten[self.spieler]):
             if self.kartenItems[i].karte != karte:
                 self.kartenItems[i].setKarte(karte)
-
+            self.kartenItems[i].setToolTip(self.spiel.aktuellerSpieler.infos[self.spieler][i].toHTML())
+    
+    
     def mousePressEvent(self, event):
         for i, item in enumerate(self.kartenItems):
             if item.contains(item.mapFromParent(event.pos())):

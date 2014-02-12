@@ -43,6 +43,7 @@ class Karte:
     def __str__(self):
         return "{}e {}".format(self.farbe.title(), self.zahl)
 
+    __repr__ = __str__
 
 class HanabiSpiel:
     
@@ -104,6 +105,8 @@ class HanabiSpiel:
             return None
     
     def passtAufAblage(self, karte):
+        if karte is None:
+            return False
         stapel = self.ablage[karte.farbe]
         if len(stapel) == 0:
             return karte.zahl == 1
@@ -130,6 +133,7 @@ class HanabiSpiel:
         if self.spielEnde:
             from hanabi.spielzug import UngültigerZug
             raise UngültigerZug("Das Spiel ist zu Ende!")
+        print("{} macht Spielzug: {}".format(self.aktuellerSpieler, zug))
         zug.ausführen(self)
         if self.aktuellerSpielzug == self.letzterSpielzug:
             self.spielEnde = True
