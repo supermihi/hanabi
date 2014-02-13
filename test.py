@@ -4,11 +4,12 @@ from hanabi.spieler import HanabiSpieler
 from hanabi.michaelsKI import Michael
 from hanabi.dummeKI import DummerSpieler
 from hanabi.jansKI import Jan
-
-spiel = HanabiSpiel(4, Jan)
-spiel.kartenGeben()
+import logging
+logging.basicConfig(level=logging.DEBUG)
+spiel = HanabiSpiel(4, Michael)
 from hanabi import gui
-
+from hanabi import simulator
+#simulator.simulieren(Jan, 4, 10)
 gui.startHanabiGui(spiel)
 
 

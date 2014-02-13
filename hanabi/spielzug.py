@@ -1,6 +1,8 @@
 from hanabi import Farben, Zahlen
 from hanabi.spiel import HanabiSpiel
 
+import logging
+
 class UngültigerZug(Exception):
     pass
 
@@ -23,7 +25,8 @@ class Hinweis(Spielzug):
             raise UngültigerZug("Keine Hinweise verfügbar")
         spiel.verfügbareHinweise -= 1
         handKarten = spiel.handKarten[self.zielSpieler]
-        passendeKarten = [i for i, karte in enumerate(handKarten) if karte.ist(self.hinweis) ]
+        passendeKarten = [i for i, karte in enumerate(handKarten) if karte is not None and karte.ist(self.hinweis) ]
+        logging.debug("{} gibt {} den Hinweis {}".format(spiel.aktuellerSpieler, self.zielSpieler, self.hinweis))
         for spieler in spiel.spieler:
             spieler.hinweis(self.zielSpieler, self.hinweis, passendeKarten)
     
@@ -40,10 +43,13 @@ class Abwerfen(Spielzug):
             spiel.verfügbareHinweise += 1
         karte = spiel.handKarten[spiel.aktuellerSpieler][self.position]
         spiel.abwurfStapel.append(karte)
-        spiel.zieheKarte(spiel.aktuellerSpieler, self.position)
+        logging.debug("{} wirft eine {} auf Position {} ab".format(spiel.aktuellerSpieler,
+                      karte, self.position))
         for spieler in spiel.spieler:
             spieler.karteAbgeworfen(karte)
-    
+        spiel.zieheKarte(spiel.aktuellerSpieler, self.position)
+        
+
     def __str__(self):
         return "Karte {} abwerfen".format(self.position)
         
@@ -57,6 +63,9 @@ class Ablegen(Spielzug):
         karte = spiel.handKarten[spiel.aktuellerSpieler][self.position]
         if spiel.passtAufAblage(karte):
             spiel.ablage[karte.farbe].append(karte)
+            logging.debug("{} legt eine {} ab".format(spiel.aktuellerSpieler, karte))
+            if karte.ist(5) and spiel.verfügbareHinweise < spiel.hinweisPlättchen:
+                spiel.hinweisPlättchen += 1
             for spieler in spiel.spieler:
                 spieler.karteAbgelegt(karte)
             spiel.zieheKarte(spiel.aktuellerSpieler, self.position)
@@ -65,6 +74,7 @@ class Ablegen(Spielzug):
             for spieler in spiel.spieler:
                 spieler.karteAbgeworfen(karte)
             spiel.blitze += 1
+            logging.debug("{} versucht eine {} ablegen, macht dabei aber einen Fehler".format(spiel.aktuellerSpieler, karte))
             spiel.zieheKarte(spiel.aktuellerSpieler, self.position)
     
     def __str__(self):

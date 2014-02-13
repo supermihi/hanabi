@@ -50,14 +50,22 @@ class HanabiSpiel:
     hinweisPlättchen = 8
     
     def __init__(self, spielerAnzahl, SpielerKlasse):
-        self.spieler = []
-        self.spielerAnzahl = spielerAnzahl
-        for spielerNummer in range(1, spielerAnzahl+1):
-            self.spieler.append(SpielerKlasse(self, spielerNummer))
-        self.kartenProSpieler = 5 if self.spielerAnzahl <= 3 else 4
+        self.SpielerKlasse = SpielerKlasse
+        self.setSpielerAnzahl(spielerAnzahl)
+        self.initSpieler()
+        
+    def setSpielerAnzahl(self, anzahl):
+        self.spielerAnzahl = anzahl
+        self.kartenProSpieler = 5 if anzahl <= 3 else 4
     
+    def initSpieler(self):
+        self.spieler = []
+        for spielerNummer in range(1, self.spielerAnzahl+1):
+            self.spieler.append(self.SpielerKlasse(self, spielerNummer))
+        self.kartenGeben()
     
     def kartenGeben(self):
+        print("****** NEUES SPIEL *****")
         self.handKarten = {}
         self.abwurfStapel = []
         self.ablage = {farbe: [] for farbe in Farben }
@@ -97,13 +105,7 @@ class HanabiSpiel:
         for karte in self.abwurfStapel:
             yield karte
 
-    def obersteKarte(self, farbe):
-        """Gibt an welches die oberste Karte auf Ablagestapel *farbe* ist (oder None)."""
-        try:
-            return self.ablage[farbe][-1]
-        except IndexError:
-            return None
-    
+
     def passtAufAblage(self, karte):
         if karte is None:
             return False
@@ -113,18 +115,14 @@ class HanabiSpiel:
         else:
             return stapel[-1].zahl == karte.zahl - 1
     
-    def leereKartenposition(self, spieler):
-        """Falls *spieler* eine Karte zu wenig hat (in der letzten Runde),
-        gib die entsprechende Position aus, sonst -1."""
-        for i, karte in enumerate(self.handKarten[spieler]):
-            if karte is None:
-                return i
-        return -1
-    
     def punktzahl(self):
         if self.blitze == 3:
             return 0
         return sum(len(stapel) for stapel in self.ablage.values())
+    
+    def autoSpiel(self):
+        while True:
+            self.autoSpielzug()
     
     def autoSpielzug(self):
         self.spielzug(self.aktuellerSpieler.macheSpielzug())
@@ -133,7 +131,7 @@ class HanabiSpiel:
         if self.spielEnde:
             from hanabi.spielzug import UngültigerZug
             raise UngültigerZug("Das Spiel ist zu Ende!")
-        print("{} macht Spielzug: {}".format(self.aktuellerSpieler, zug))
+        #print("{} macht Spielzug: {}".format(self.aktuellerSpieler, zug))
         zug.ausführen(self)
         if self.aktuellerSpielzug == self.letzterSpielzug:
             self.spielEnde = True

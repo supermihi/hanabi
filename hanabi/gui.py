@@ -7,6 +7,7 @@ from PyQt4.QtCore import Qt
 from hanabi import Farben, Zahlen
 from hanabi.spielzug import Ablegen, Abwerfen, Hinweis, UngültigerZug
 from hanabi.spiel import SpielEnde
+from hanabi.spieler import HanabiSpieler
 
 KartenGröße   = QtCore.QRectF(-15, -25, 30, 50)
 KartenAbstand = KartenGröße.width() / 3
@@ -29,29 +30,25 @@ class HanabiFenster(QtGui.QWidget):
         self.spielfeld = QtGui.QGraphicsScene()
         self.spielfeld.fenster = self
         self.spielfeldView = QtGui.QGraphicsView(self.spielfeld)
-        self.spielerItems = []
-        for i, spieler in enumerate(self.spiel.spieler):
-            spielerItem = SpielerGraphicsItem(spiel, spieler)
-            self.spielerItems.append(spielerItem)
-            self.spielfeld.addItem(spielerItem)
-            winkel = 2*math.pi/spiel.spielerAnzahl*i
-            spielerItem.setPos(SpielfeldRadius*math.cos(winkel), SpielfeldRadius*math.sin(winkel))
-            spielerItem.setRotation(math.degrees(winkel)+90)
-        
-        self.ablage = AblageGraphicsItem(spiel)
-        self.spielfeld.addItem(self.ablage)
-        
-        self.infofeld = InfoFeld(spiel)
-        self.spielfeld.addItem(self.infofeld)
-        self.infofeld.setPos(self.spielfeld.itemsBoundingRect().left() - 50 - self.infofeld.boundingRect().width(),
-            -self.infofeld.boundingRect().height()/2)
-            
-        self.abwurf = AbwurfGraphicsItem(spiel)
-        self.spielfeld.addItem(self.abwurf)
-        self.abwurf.setPos(self.spielfeld.itemsBoundingRect().topRight())
-        self.resize(1000, 650)
+        self.initSpielfeld()
         layout.addWidget(self.spielfeldView)
+        
         buttonBox = QtGui.QVBoxLayout()
+        buttonBox.addWidget(QtGui.QLabel("KI-Spieler:"))
+        combobox = QtGui.QComboBox()
+        clses = HanabiSpieler.__subclasses__()
+        for cls in clses:
+            combobox.addItem(cls.__name__, cls)
+        buttonBox.addWidget(combobox)
+        combobox.activated.connect(self.setSpielerKlasse)
+        self.clsBox = combobox
+        combobox.setCurrentIndex(clses.index(type(spiel.spieler[0])))
+        
+        anzahlBox = QtGui.QSpinBox()
+        anzahlBox.setRange(2, 5)
+        buttonBox.addWidget(anzahlBox)
+        anzahlBox.setValue(spiel.spielerAnzahl)
+        anzahlBox.valueChanged.connect(self.setSpielerZahl)
         kartenGebenButton = QtGui.QPushButton("Karten geben")
         buttonBox.addWidget(kartenGebenButton)
         kartenGebenButton.clicked.connect(self.initSpiel)
@@ -61,12 +58,49 @@ class HanabiFenster(QtGui.QWidget):
         spielDurchlaufenButton.clicked.connect(self.durchlaufen)
         buttonBox.addWidget(autoZugButton)
         buttonBox.addWidget(spielDurchlaufenButton)
+        buttonBox.addStretch()
         layout.addLayout(buttonBox)
         
         self.setLayout(layout)
         self.show()
         self.initSpiel() # zum Testen
+        self.resize(1000, 650)
+    
+    def initSpielfeld(self):
+        self.spielfeld.clear()
+        self.spielerItems = []
+        for i, spieler in enumerate(self.spiel.spieler):
+            spielerItem = SpielerGraphicsItem(self.spiel, spieler)
+            self.spielerItems.append(spielerItem)
+            self.spielfeld.addItem(spielerItem)
+            winkel = 2*math.pi/self.spiel.spielerAnzahl*i
+            spielerItem.setPos(SpielfeldRadius*math.cos(winkel),
+                               SpielfeldRadius*math.sin(winkel))
+            spielerItem.setRotation(math.degrees(winkel)+90)
+        
+        self.ablage = AblageGraphicsItem(self.spiel)
+        self.spielfeld.addItem(self.ablage)
+        
+        self.infofeld = InfoFeld(self.spiel)
+        self.spielfeld.addItem(self.infofeld)
+        self.infofeld.setPos(self.spielfeld.itemsBoundingRect().left() - 50 - self.infofeld.boundingRect().width(),
+            -self.infofeld.boundingRect().height()/2)
+            
+        self.abwurf = AbwurfGraphicsItem(self.spiel)
+        self.spielfeld.addItem(self.abwurf)
+        self.abwurf.setPos(self.spielfeld.itemsBoundingRect().topRight())
+        
+        self.spielfeld.setSceneRect(self.spielfeld.itemsBoundingRect())
 
+    def setSpielerKlasse(self, index):
+        self.spiel.SpielerKlasse = self.clsBox.itemData(index)
+        self.spiel.initSpieler()
+        self.initSpielfeld()
+        
+    def setSpielerZahl(self, value):
+        self.spiel.setSpielerAnzahl(value)
+        self.spiel.initSpieler()
+        self.initSpielfeld()
     
     def aktualisiere(self):
         for item in self.spielerItems:
@@ -80,22 +114,27 @@ class HanabiFenster(QtGui.QWidget):
         return self.triggerSpielzug(self.spiel.aktuellerSpieler.macheSpielzug())
     
     def durchlaufen(self):
-        while True:
-            if not self.autoSpielzug():
-                break
+        try:
+            self.spiel.autoSpiel()
+        except UngültigerZug:
+            pass
+        except SpielEnde:
+            pass
+        self.aktualisiere()
     
     def triggerSpielzug(self, spielzug):
         try:
             self.spiel.spielzug(spielzug)
+            self.aktualisiere()
             return True
         except UngültigerZug as e:
+            self.aktualisiere()
             QtGui.QMessageBox.warning(self, "Ungültiger Zug", str(e))
             return False
         except SpielEnde as e:
+            self.aktualisiere()
             QtGui.QMessageBox.information(self, "Spielende", str(e))
             return False
-        finally:
-            self.aktualisiere()
         
     def initSpiel(self):
         self.spiel.kartenGeben()
@@ -114,6 +153,9 @@ class KarteGraphicsItem(QtGui.QGraphicsRectItem):
         font.setPointSize(20)
         self.zahlItem.setFont(font)
         self.zahlItem.setAcceptedMouseButtons(Qt.NoButton)
+        self.infoItem = QtGui.QGraphicsSimpleTextItem()
+        self.infoItem.setParentItem(self)
+        self.infoItem.setPos(self.boundingRect().topLeft())
         self.setKarte(karte)
     
     def setKarte(self, karte):
@@ -163,6 +205,13 @@ class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
             if self.kartenItems[i].karte != karte:
                 self.kartenItems[i].setKarte(karte)
             self.kartenItems[i].setToolTip(self.spiel.aktuellerSpieler.infos[self.spieler][i].toHTML())
+            hinweise = set()
+            for hinweis in self.spieler.hinweise:
+                if hinweis.spieler is self.spieler:
+                    if hinweis.spielzug >= self.spieler.infos[self.spieler][i].seitSpielzug:
+                        if i in hinweis.positionen:
+                            hinweise.add(hinweis.art)
+            self.kartenItems[i].infoItem.setText("/".join(str(h) for h in hinweise))
     
     
     def mousePressEvent(self, event):
@@ -212,7 +261,10 @@ class AblageGraphicsItem(QtGui.QGraphicsRectItem):
         
     def aktualisiere(self):
         for farbe in Farben:
-            oben = self.spiel.obersteKarte(farbe)
+            try:
+                oben = self.spiel.ablage[farbe][-1]
+            except IndexError:
+                oben = None
             if self.stapel[farbe].karte != oben:
                 self.stapel[farbe].setKarte(oben)
         

@@ -5,9 +5,10 @@ from hanabi import Farben, Zahlen
 
 class KartenInformation(dict):
     
-    def __init__(self, spieler, andere, position, seitSpielzug=1):
+    def __init__(self, spieler, betrifft, andere, position, seitSpielzug=1):
         super().__init__()
         self.spieler = spieler
+        self.betrifft = betrifft
         self.spiel = spieler.spiel
         self.andere = andere
         self.position = position
@@ -25,22 +26,28 @@ class KartenInformation(dict):
                 if karte is not None:
                     self[karte.farbe, karte.zahl] -= 1
         for hinweis in self.relevanteHinweise():
-            for (farbe, zahl) in self:
-                if self.position in hinweis.positionen:
-                    if farbe != hinweis.art and zahl != hinweis.art:
-                        self[farbe, zahl] = 0
-                else:
-                    if farbe == hinweis.art or zahl == hinweis.art:
-                        self[farbe, zahl] = 0
+            self.berücksichtigeHinweis(hinweis)
+    
+    def berücksichtigeHinweis(self, hinweis):
+        for (farbe, zahl) in self:
+            if self.position in hinweis.positionen:
+                if farbe != hinweis.art and zahl != hinweis.art:
+                    self[farbe, zahl] = 0
+            else:
+                if farbe == hinweis.art or zahl == hinweis.art:
+                    self[farbe, zahl] = 0
     
     def relevanteHinweise(self):
         for hinweis in self.spieler.hinweise:
-            if hinweis.spielzug >= self.seitSpielzug and hinweis.spieler == self.spieler:
+            if hinweis.spielzug >= self.seitSpielzug and hinweis.spieler is self.betrifft:
                 yield hinweis
     
     def möglicheKarten(self):
         """Gibt eine Liste an Karten zurück, die aktuell möglich sind."""
-        return [Karte(farbe, zahl) for (farbe,zahl), nummer in self.items() if nummer > 0]
+        möglich = []
+        for (farbe, zahl), nummer in self.items():
+            möglich.extend( [Karte(farbe, zahl)]*nummer )
+        return möglich
     
     def toHTML(self):
         string = "<table><tr><td></td>{}</tr>".format("".join("<th>{}</th>".format(farbe) for farbe in Farben))
@@ -106,20 +113,30 @@ class HanabiSpieler:
     def verfügbareBlitze(self):
         return 2 - self.spiel.blitze
     
+    def abgelegteKarten(self, farbe):
+        return len(self.spiel.ablage[farbe])
+    
     def passtAufAblage(self, karte):
         return self.spiel.passtAufAblage(karte)
+        
+    def habeKarteInPosition(self, position):
+        """Gibt an ob der Spieler an *position* eine Karte hat. In der letzten
+        Runde kann dies False zurückgeben."""
+        return self.spiel.handKarten[self][position] is not None
     
+    def spielerAnzahl(self):
+        return self.spiel.spielerAnzahl
     
     # === Verwaltung der Infos ===
     def neuesSpiel(self):
         spiel = self.spiel
         self.hinweise = []
         self.infos = {}
-        self.infos[self] = [ KartenInformation(self, self.mitspieler(), i) 
+        self.infos[self] = [ KartenInformation(self, self, self.mitspieler(), i) 
                              for i in range(spiel.kartenProSpieler) ]
         for spieler in self.mitspieler():
             andere = self.mitspieler(außer=spieler)
-            self.infos[spieler] = [ KartenInformation(self, andere, i) for i in range(spiel.kartenProSpieler) ]
+            self.infos[spieler] = [ KartenInformation(self, spieler, andere, i) for i in range(spiel.kartenProSpieler) ]
     
     def infosAufbauen(self):
         for spielerInfos in self.infos.values():
@@ -133,15 +150,18 @@ class HanabiSpieler:
         self.infosAufbauen()
         
     def karteAbgelegt(self, karte):
-        self.infosAufbauen()
+        #self.infosAufbauen()
+        pass
             
     def karteAbgeworfen(self, karte):
-        self.infosAufbauen()
-                
+        #self.infosAufbauen()
+        pass
+    
     def hinweis(self, mitspieler, hinweis, positionen):
         hinweisInfo = HinweisInformation(mitspieler, self.spiel.aktuellerSpielzug, positionen, hinweis)
         self.hinweise.append(hinweisInfo)
-        self.infosAufbauen()
+        for info in self.infos[mitspieler]:
+            info.berücksichtigeHinweis(hinweisInfo)
     
     def __str__(self):
         return "Spieler {}".format(self.nummer)

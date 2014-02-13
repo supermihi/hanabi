@@ -13,10 +13,6 @@ class Jan(HanabiSpieler):
                     möglich = self.infos[self][position].möglicheKarten()
                     if all(self.passtAufAblage(karte) for karte in möglich):
                         return Ablegen(position)
-                    else:
-                        print("sicher ist sicher")
-                        print(möglich)
-                        
                 else:
                     return Ablegen(position)
         nächster = self.mitspieler()[0]
@@ -25,7 +21,7 @@ class Jan(HanabiSpieler):
             bester = (10, None)
             for karte in passendeKarten:
                 for hinweis in karte.farbe, karte.zahl:
-                    zutreffend = [k for k in self.handkartenVon(nächster) if karte.ist(hinweis)]
+                    zutreffend = [k for k in self.handkartenVon(nächster) if karte is not None and karte.ist(hinweis)]
                     if len(zutreffend) < bester[0] or (len(zutreffend) == bester[0] and hinweis in Zahlen):
                         bester = (len(zutreffend), hinweis)
             if bester[1] is not None:
