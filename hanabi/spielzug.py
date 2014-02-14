@@ -46,7 +46,7 @@ class Abwerfen(Spielzug):
         logging.debug("{} wirft eine {} auf Position {} ab".format(spiel.aktuellerSpieler,
                       karte, self.position))
         for spieler in spiel.spieler:
-            spieler.karteAbgeworfen(karte)
+            spieler.karteAbgeworfen(spiel.aktuellerSpieler, karte)
         spiel.zieheKarte(spiel.aktuellerSpieler, self.position)
         
 
@@ -67,14 +67,14 @@ class Ablegen(Spielzug):
             if karte.ist(5) and spiel.verfügbareHinweise < spiel.hinweisPlättchen:
                 spiel.hinweisPlättchen += 1
             for spieler in spiel.spieler:
-                spieler.karteAbgelegt(karte)
+                spieler.karteAbgelegt(spiel.aktuellerSpieler, karte)
             spiel.zieheKarte(spiel.aktuellerSpieler, self.position)
         else:
             spiel.abwurfStapel.append(karte)
             for spieler in spiel.spieler:
-                spieler.karteAbgeworfen(karte)
+                spieler.karteAbgeworfen(spiel.aktuellerSpieler, karte)
             spiel.blitze += 1
-            logging.debug("{} versucht eine {} ablegen, macht dabei aber einen Fehler".format(spiel.aktuellerSpieler, karte))
+            logging.debug("{} versucht eine {} (position {}) abzulegen, macht dabei aber einen Fehler".format(spiel.aktuellerSpieler, karte, self.position))
             spiel.zieheKarte(spiel.aktuellerSpieler, self.position)
     
     def __str__(self):

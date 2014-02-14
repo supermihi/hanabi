@@ -204,11 +204,11 @@ class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
         for i, karte in enumerate(self.spiel.handKarten[self.spieler]):
             if self.kartenItems[i].karte != karte:
                 self.kartenItems[i].setKarte(karte)
-            self.kartenItems[i].setToolTip(self.spiel.aktuellerSpieler.infos[self.spieler][i].toHTML())
+            self.kartenItems[i].setToolTip(self.spiel.aktuellerSpieler.infos[self.spieler].htmlInfo(i))
             hinweise = set()
-            for hinweis in self.spieler.hinweise:
+            for hinweis in self.spieler.hinweisInfos:
                 if hinweis.spieler is self.spieler:
-                    if hinweis.spielzug >= self.spieler.infos[self.spieler][i].seitSpielzug:
+                    if hinweis.spielzug >= self.spieler.infos[self.spieler].karten[i].seit:
                         if i in hinweis.positionen:
                             hinweise.add(hinweis.art)
             self.kartenItems[i].infoItem.setText("/".join(str(h) for h in hinweise))

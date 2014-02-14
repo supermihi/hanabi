@@ -12,6 +12,9 @@ class Karte:
     def __init__(self, farbe, zahl):
         self.farbe = farbe
         self.zahl = zahl
+        self.farbIndex = Farben.index(farbe)
+        self.zahlIndex = Zahlen.index(zahl)
+        self.index = (self.farbIndex, self.zahlIndex)
     
     def ist(self, farbeOderZahl):
         return self.farbe == farbeOderZahl or self.zahl == farbeOderZahl
@@ -94,17 +97,6 @@ class HanabiSpiel:
         self.handKarten[spieler][position] = neueKarte
         for mitspieler in self.spieler:
             mitspieler.neueKarte(spieler, position) # mitspieler benachrichtigen
-            
-    
-    
-    def fürAlleSichtbareKarten(self):
-        """Iteriert durch alle öffentlich sichtbare (abgelegte und abgeworfene) Karten."""
-        for farbe in Farben:
-            for karte in self.ablage[farbe]:
-                yield karte
-        for karte in self.abwurfStapel:
-            yield karte
-
 
     def passtAufAblage(self, karte):
         if karte is None:

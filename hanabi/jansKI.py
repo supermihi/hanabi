@@ -6,7 +6,7 @@ from hanabi.spielzug import *
 class Jan(HanabiSpieler):
     
     def macheSpielzug(self):
-        for hinweis in self.hinweise:
+        for hinweis in self.hinweisInfos:
             if hinweis.spielzug == self.aktuellerSpielzug() - 1:
                 position = self.ältesteKarte(self, hinweis.positionen)
                 if self.verfügbareBlitze() == 0 and len(hinweis.positionen) > 1:
