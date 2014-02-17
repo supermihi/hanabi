@@ -1,8 +1,8 @@
 import sys, math
 from collections import OrderedDict
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import Qt
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtCore import Qt
 
 from hanabi import Farben, Zahlen
 from hanabi.spielzug import Ablegen, Abwerfen, Hinweis, UngültigerZug
@@ -20,24 +20,24 @@ colorMap = {
           "rot"  : Qt.red
         }
 
-class HanabiFenster(QtGui.QWidget):
+class HanabiFenster(QtWidgets.QWidget):
     
     def __init__(self, spiel):
         super().__init__()
         self.spiel = spiel
         self.setWindowTitle("Hanabi")
         self.spielerVisus = []
-        layout = QtGui.QHBoxLayout()
-        self.spielfeld = QtGui.QGraphicsScene()
+        layout = QtWidgets.QHBoxLayout()
+        self.spielfeld = QtWidgets.QGraphicsScene()
         self.spielfeld.fenster = self
-        self.spielfeldView = QtGui.QGraphicsView(self.spielfeld)
+        self.spielfeldView = QtWidgets.QGraphicsView(self.spielfeld)
         self.initSpielfeld()
         
         layout.addWidget(self.spielfeldView)
         
-        buttonBox = QtGui.QVBoxLayout()
-        buttonBox.addWidget(QtGui.QLabel("KI-Spieler:"))
-        combobox = QtGui.QComboBox()
+        buttonBox = QtWidgets.QVBoxLayout()
+        buttonBox.addWidget(QtWidgets.QLabel("KI-Spieler:"))
+        combobox = QtWidgets.QComboBox()
         clses = HanabiSpieler.__subclasses__()
         for cls in clses:
             combobox.addItem(cls.__name__, cls)
@@ -46,17 +46,17 @@ class HanabiFenster(QtGui.QWidget):
         self.clsBox = combobox
         combobox.setCurrentIndex(clses.index(type(spiel.spieler[0])))
         
-        anzahlBox = QtGui.QSpinBox()
+        anzahlBox = QtWidgets.QSpinBox()
         anzahlBox.setRange(2, 5)
         buttonBox.addWidget(anzahlBox)
         anzahlBox.setValue(spiel.spielerAnzahl)
         anzahlBox.valueChanged.connect(self.setSpielerZahl)
-        kartenGebenButton = QtGui.QPushButton("Karten geben")
+        kartenGebenButton = QtWidgets.QPushButton("Karten geben")
         buttonBox.addWidget(kartenGebenButton)
         kartenGebenButton.clicked.connect(self.initSpiel)
-        autoZugButton = QtGui.QPushButton("KI-Zug")
+        autoZugButton = QtWidgets.QPushButton("KI-Zug")
         autoZugButton.clicked.connect(self.autoSpielzug)
-        spielDurchlaufenButton = QtGui.QPushButton("KI bis ende")
+        spielDurchlaufenButton = QtWidgets.QPushButton("KI bis ende")
         spielDurchlaufenButton.clicked.connect(self.durchlaufen)
         buttonBox.addWidget(autoZugButton)
         buttonBox.addWidget(spielDurchlaufenButton)
@@ -143,11 +143,11 @@ class HanabiFenster(QtGui.QWidget):
             return True
         except UngültigerZug as e:
             self.aktualisiere()
-            QtGui.QMessageBox.warning(self, "Ungültiger Zug", str(e))
+            QtWidgets.QMessageBox.warning(self, "Ungültiger Zug", str(e))
             return False
         except SpielEnde as e:
             self.aktualisiere()
-            QtGui.QMessageBox.information(self, "Spielende", str(e))
+            QtWidgets.QMessageBox.information(self, "Spielende", str(e))
             return False
         
     def initSpiel(self):
@@ -155,19 +155,19 @@ class HanabiFenster(QtGui.QWidget):
         self.aktualisiere()
     
     
-class KarteGraphicsItem(QtGui.QGraphicsRectItem):
+class KarteGraphicsItem(QtWidgets.QGraphicsRectItem):
     
     def __init__(self, karte):
         super().__init__(KartenGröße)
         
-        self.zahlItem = QtGui.QGraphicsSimpleTextItem()
+        self.zahlItem = QtWidgets.QGraphicsSimpleTextItem()
         self.zahlItem.setParentItem(self)
         font = QtGui.QFont()
         font.setBold(True)
         font.setPointSize(20)
         self.zahlItem.setFont(font)
         self.zahlItem.setAcceptedMouseButtons(Qt.NoButton)
-        self.infoItem = QtGui.QGraphicsSimpleTextItem()
+        self.infoItem = QtWidgets.QGraphicsSimpleTextItem()
         self.infoItem.setParentItem(self)
         self.infoItem.setPos(self.boundingRect().topLeft())
         self.setKarte(karte)
@@ -194,7 +194,7 @@ class SpielerVisualisierung(QtCore.QObject):
         super().__init__()
         self.graphicsItem = SpielerGraphicsItem(spiel, spieler, self)
         
-class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
+class SpielerGraphicsItem(QtWidgets.QGraphicsRectItem):
     
     def __init__(self, spiel, spieler, vis):
         super().__init__()
@@ -211,7 +211,7 @@ class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
             item.setPos(-gesamtBreite/2 + KartenGröße.width()/2 + i*(KartenGröße.width() + KartenAbstand),
                         0)
         self.setTransformOriginPoint(self.boundingRect().center())
-        label = QtGui.QGraphicsSimpleTextItem("Spieler {}".format(spieler.nummer))
+        label = QtWidgets.QGraphicsSimpleTextItem("Spieler {}".format(spieler.nummer))
         font = QtGui.QFont()
         font.setPointSize(12)
         label.setFont(font)
@@ -248,7 +248,7 @@ class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
             if item.contains(item.mapFromParent(event.pos())):
                 if self.spieler is self.spiel.aktuellerSpieler:
                     items = ["Ablegen", "Abwerfen"]
-                    ans, ok = QtGui.QInputDialog.getItem(
+                    ans, ok = QtWidgets.QInputDialog.getItem(
                         None,
                         "Ablegen oder abwerfen?",
                         "Die {} ...".format(item.karte),
@@ -261,7 +261,7 @@ class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
                 else:
                     items = ["Farbe ({})".format(item.karte.farbe),
                              "Zahl ({})".format(item.karte.zahl)]
-                    ans, ok = QtGui.QInputDialog.getItem(
+                    ans, ok = QtWidgets.QInputDialog.getItem(
                         None,
                         "Farb- oder Zahltipp?",
                         "Tipp zu: ",
@@ -273,7 +273,7 @@ class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
                     event.accept()
                     return
 
-class AblageGraphicsItem(QtGui.QGraphicsRectItem):
+class AblageGraphicsItem(QtWidgets.QGraphicsRectItem):
     
     def __init__(self, spiel):
         super().__init__()
@@ -297,7 +297,7 @@ class AblageGraphicsItem(QtGui.QGraphicsRectItem):
             if self.stapel[farbe].karte != oben:
                 self.stapel[farbe].setKarte(oben)
         
-class KartenInfoWidget(QtGui.QLabel):
+class KartenInfoWidget(QtWidgets.QLabel):
     infoText = """Aufgenommen in: {spielzug}
 Information:
 {info}
@@ -317,7 +317,7 @@ WS kritisch: {wskritisch}
         möglich=info.möglichkeiten(pos),
         wskritisch=info.wsKritisch(pos)))
         
-class InfoFeld(QtGui.QGraphicsSimpleTextItem):
+class InfoFeld(QtWidgets.QGraphicsSimpleTextItem):
     
     _text = ("Hinweise: {h}\n"
             "Blitze: {b}\n"
@@ -344,14 +344,14 @@ class InfoFeld(QtGui.QGraphicsSimpleTextItem):
             l=spiel.letzterSpielzug or "???",
             p=spiel.punktzahl()))
 
-class AbwurfGraphicsItem(QtGui.QGraphicsRectItem):
+class AbwurfGraphicsItem(QtWidgets.QGraphicsRectItem):
     
     def __init__(self, spiel):
         super().__init__()
         font = QtGui.QFont()
         font.setPointSize(16)
         self.setPen(QtGui.QPen(Qt.NoPen))
-        text = QtGui.QGraphicsSimpleTextItem("Abgeworfene Karten")
+        text = QtWidgets.QGraphicsSimpleTextItem("Abgeworfene Karten")
         text.setFont(font)
         text.setParentItem(self)
         self.text = text
@@ -392,6 +392,6 @@ class AbwurfGraphicsItem(QtGui.QGraphicsRectItem):
 app = None
 def startHanabiGui(spiel):
     global app
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     fenster = HanabiFenster(spiel)
     app.exec_()

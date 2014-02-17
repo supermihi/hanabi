@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.DEBUG)
 spiel = HanabiSpiel(4, Michael)
 from hanabi import gui
 from hanabi import simulator
-#simulator.simulieren(Jan, 4, 10)
-gui.startHanabiGui(spiel)
+simulator.simulieren(Michael, 4, 100)
+#gui.startHanabiGui(spiel)
 
 
