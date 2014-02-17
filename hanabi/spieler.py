@@ -17,7 +17,9 @@ class SpielerInfo:
         self.karten = []
         self.sichtInfo = np.zeros(arrayDim, dtype=np.int)
         self.passtMaske = np.zeros(arrayDim, dtype=np.int)
-        self.passtMaske[:, 0] = 1
+        self.passtMaske[:, 0] = 1 # am Anfang passen alle 1er
+        self.kritischMaske = np.zeros(arrayDim, dtype=np.int)
+        self.kritischMaske[:,-1] = 1 # am Anfang sind alle 5er kritisch
         self.egalMaske = np.zeros(arrayDim, dtype=np.int)
         for i in range(spieler.kartenProSpieler()):
             self.karten.append(KartenInfo(betrifft, i))
@@ -51,8 +53,9 @@ class SpielerInfo:
             # ich kann die neue Karte sehen -> sichtInfo runtersetzen
             karte = self.spieler.handkartenVon(mitspieler)[position]
             self.sichtInfo[karte.index] += 1
-            if self.karten[position].matrix[karte.index] > 0:
-                self.karten[position].matrix[karte.index] -= 1
+            for k in self.karten:
+                if k.matrix[karte.index] > 0:
+                    k.matrix[karte.index] -= 1
         else:
             # jemand anders sieht neue Karte bei mir, ich weiß aber nicht welche
             # => kann nichts sagen
@@ -68,6 +71,11 @@ class SpielerInfo:
             # die Karte habe ich schon vorher gesehen, also keine
             # neue Information
             pass
+        abgeworfene = [ k for k in self.spieler.abgeworfeneKarten()
+                        if k == karte ]
+        if len(abgeworfene) == Karte.häufigkeit(karte.farbe, karte.zahl) - 1:
+            self.kritischMaske[karte.farbIndex, karte.zahlIndex] = 1
+        
         # TODO REPARIEREN if self. == self.startInfo[karte.index]:
             # alle Karten dieser Sorte sind weg -> stapel egal
         #    self.egalMaske[karte.farbIndex, :] = 1
@@ -83,10 +91,14 @@ class SpielerInfo:
         for karte in self.karten:
             karte.matrix = hinweis.anwenden(karte, karte.matrix)
     
+    def möglichkeiten(self, position):
+        """Gibt Anzahl der möglichen Karten auf *position* (inkl. Multiplizität) an."""
+        return np.sum(self.karten[position].matrix)
+    
     def wsPasst(self, position):
         """Gibt Wahrscheinlichkeit dass Karte auf *position* abgelegt werden kann."""
         passend = np.sum(self.karten[position].matrix*self.passtMaske)
-        alle = np.sum(self.karten[position].matrix)
+        alle = self.möglichkeiten(position)
         if alle == 0:
             return 0
         return passend / alle
@@ -94,14 +106,23 @@ class SpielerInfo:
     def wsEgal(self, position):
         """Gibt Wahrscheinlichkeit dass Karte auf *position* nicht mehr gebraucht wird."""
         egal = np.sum(self.karten[position].matrix*self.egalMaske)
-        alle = np.sum(self.karten[position].matrix)
+        alle = self.möglichkeiten(position)
         if alle == 0:
             return 0
         return egal / alle
+        
+    def wsKritisch(self, position):
+        """Gibt Wahrscheinlichkeit dass Karte auf *position* die letzte ihrer Art ist."""
+        kritisch = np.sum(self.karten[position].matrix*self.kritischMaske)
+        alle = self.möglichkeiten(position)
+        if alle == 0:
+            return 0
+        return kritisch / alle       
     
     def erwZahl(self, position):
         """Erwartungswert der Zahl, die sich auf *position* befindet."""
         return np.dot(np.arange(1,6), self.karten[position].matrix.sum(0))/self.karten[position].matrix.sum()
+    
     def infoMatrix(self, position):
         return self.karten[position].matrix
     
@@ -205,13 +226,16 @@ class HanabiSpieler:
     def abgelegteKarten(self, farbe):
         return len(self.spiel.ablage[farbe])
     
+    def abgeworfeneKarten(self):
+        for karte in self.spiel.abwurfStapel:
+            yield karte
+    
     def sichtbareKarten(self):
         """Iteriert durch alle öffentlich sichtbare (abgelegte und abgeworfene) Karten."""
         for farbe in Farben:
             for karte in self.spiel.ablage[farbe]:
                 yield karte
-        for karte in self.spiel.abwurfStapel:
-            yield karte
+        yield from self.abgeworfeneKarten()
 
     def passtAufAblage(self, karte):
         return self.spiel.passtAufAblage(karte)

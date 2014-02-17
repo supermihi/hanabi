@@ -26,11 +26,13 @@ class HanabiFenster(QtGui.QWidget):
         super().__init__()
         self.spiel = spiel
         self.setWindowTitle("Hanabi")
+        self.spielerVisus = []
         layout = QtGui.QHBoxLayout()
         self.spielfeld = QtGui.QGraphicsScene()
         self.spielfeld.fenster = self
         self.spielfeldView = QtGui.QGraphicsView(self.spielfeld)
         self.initSpielfeld()
+        
         layout.addWidget(self.spielfeldView)
         
         buttonBox = QtGui.QVBoxLayout()
@@ -58,6 +60,10 @@ class HanabiFenster(QtGui.QWidget):
         spielDurchlaufenButton.clicked.connect(self.durchlaufen)
         buttonBox.addWidget(autoZugButton)
         buttonBox.addWidget(spielDurchlaufenButton)
+        
+        self.infoWidget = KartenInfoWidget()
+        buttonBox.addWidget(self.infoWidget)
+        
         buttonBox.addStretch()
         layout.addLayout(buttonBox)
         
@@ -68,15 +74,19 @@ class HanabiFenster(QtGui.QWidget):
     
     def initSpielfeld(self):
         self.spielfeld.clear()
-        self.spielerItems = []
+        if len(self.spielerVisus) > 0:
+            for vis in self.spielerVisus:
+                vis.hoverKarte.disconnect(self.updateInfo)
+        self.spielerVisus = []
         for i, spieler in enumerate(self.spiel.spieler):
-            spielerItem = SpielerGraphicsItem(self.spiel, spieler)
-            self.spielerItems.append(spielerItem)
-            self.spielfeld.addItem(spielerItem)
+            spielerVis = SpielerVisualisierung(self.spiel, spieler)
+            self.spielerVisus.append(spielerVis)
+            self.spielfeld.addItem(spielerVis.graphicsItem)
+            spielerVis.hoverKarte.connect(self.updateInfo)
             winkel = 2*math.pi/self.spiel.spielerAnzahl*i
-            spielerItem.setPos(SpielfeldRadius*math.cos(winkel),
+            spielerVis.graphicsItem.setPos(SpielfeldRadius*math.cos(winkel),
                                SpielfeldRadius*math.sin(winkel))
-            spielerItem.setRotation(math.degrees(winkel)+90)
+            spielerVis.graphicsItem.setRotation(math.degrees(winkel)+90)
         
         self.ablage = AblageGraphicsItem(self.spiel)
         self.spielfeld.addItem(self.ablage)
@@ -103,12 +113,16 @@ class HanabiFenster(QtGui.QWidget):
         self.initSpielfeld()
     
     def aktualisiere(self):
-        for item in self.spielerItems:
-            item.aktualisiere()
+        for item in self.spielerVisus:
+            item.graphicsItem.aktualisiere()
         self.abwurf.aktualisiere()
         self.ablage.aktualisiere()
         self.infofeld.aktualisiere()
     
+    
+    def updateInfo(self, spieler, pos):
+        info = self.spiel.aktuellerSpieler.infos[spieler]
+        self.infoWidget.setKarte(info, pos)
     
     def autoSpielzug(self):
         return self.triggerSpielzug(self.spiel.aktuellerSpieler.macheSpielzug())
@@ -172,13 +186,23 @@ class KarteGraphicsItem(QtGui.QGraphicsRectItem):
         self.zahlItem.setPos(-zahlRect.width()/2, -zahlRect.height()/2)
 
 
-class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
+class SpielerVisualisierung(QtCore.QObject):
+    
+    hoverKarte = QtCore.pyqtSignal(object, int)
     
     def __init__(self, spiel, spieler):
         super().__init__()
+        self.graphicsItem = SpielerGraphicsItem(spiel, spieler, self)
+        
+class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
+    
+    def __init__(self, spiel, spieler, vis):
+        super().__init__()
         self.spiel = spiel
+        self.vis = vis
         self.spieler = spieler
         self.setPen(QtGui.QPen(Qt.NoPen))
+        self.setAcceptHoverEvents(True)
         self.kartenItems = [KarteGraphicsItem(None) for _ in range(spiel.kartenProSpieler)]
         gesamtBreite = spiel.kartenProSpieler*KartenGröße.width() \
                      + (spiel.kartenProSpieler - 1)*KartenAbstand
@@ -197,6 +221,11 @@ class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
         self.label = label
         self.setRect(self.childrenBoundingRect())
         self.aktualisiere()
+    
+    def hoverMoveEvent(self, event):
+        for i, item in enumerate(self.kartenItems):
+            if item.isUnderMouse():
+                self.vis.hoverKarte.emit(self.spieler, i)
     
     def aktualisiere(self):
         self.label.setPen(QtGui.QPen(Qt.green if self.spieler is self.spiel.aktuellerSpieler
@@ -268,7 +297,26 @@ class AblageGraphicsItem(QtGui.QGraphicsRectItem):
             if self.stapel[farbe].karte != oben:
                 self.stapel[farbe].setKarte(oben)
         
+class KartenInfoWidget(QtGui.QLabel):
+    infoText = """Aufgenommen in: {spielzug}
+Information:
+{info}
+Möglichkeiten: {möglich}
+WS passt: {wspasst}
+WS egal: {wsegal}
+WS kritisch: {wskritisch}
+"""
+    def __init__(self):
+        super().__init__()
 
+    def setKarte(self, info, pos):
+        self.setText(self.infoText.format(spielzug=info.karten[pos].seit,
+        info=info.infoMatrix(pos),
+        wspasst=info.wsPasst(pos),
+        wsegal=info.wsEgal(pos),
+        möglich=info.möglichkeiten(pos),
+        wskritisch=info.wsKritisch(pos)))
+        
 class InfoFeld(QtGui.QGraphicsSimpleTextItem):
     
     _text = ("Hinweise: {h}\n"

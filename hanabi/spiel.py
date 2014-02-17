@@ -19,6 +19,10 @@ class Karte:
     def ist(self, farbeOderZahl):
         return self.farbe == farbeOderZahl or self.zahl == farbeOderZahl
     
+    def __eq__(self, andere):
+        if andere is None:
+            return False
+        return self.farbe == andere.farbe and self.zahl == andere.zahl
     
     @staticmethod
     def komplettesDeck():
