@@ -2,8 +2,7 @@ import itertools, math
 
 import numpy as np
 
-from hanabi.spiel import Karte
-from hanabi import Farben, Zahlen
+from hanabi import Karte, Farben, Zahlen
 from hanabi.spieler import HanabiSpieler, HinweisInfo
 from hanabi.spielzug import Hinweis, Abwerfen, Ablegen
 
@@ -28,7 +27,7 @@ class Michael(HanabiSpieler):
         for i in range(self.kartenProSpieler()):
             davor = sInfo.infoMatrix(i)
             davorEntropie, davorPasst = self.entropie(spieler, davor)
-            danach = hinweis.anwenden(sInfo.karten[i], davor)
+            danach = hinweis.anwenden(sInfo.kartenInfos[i], davor)
             danachEntropie, danachPasst = self.entropie(spieler, danach)
             informationsGewinn += np.sum(davor - danach)
             entropieVerlust += davorEntropie - danachEntropie

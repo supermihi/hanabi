@@ -1,79 +1,42 @@
 import itertools
 
-from hanabi import Farben, Zahlen
+from hanabi import Karte, Farben, Zahlen
 
 
 class SpielEnde(RuntimeError):
+    """Wird in einem Spielzug geworfen wenn er das Spiel beendet."""
     pass
 
 
-class Karte:
-    
-    def __init__(self, farbe, zahl):
-        self.farbe = farbe
-        self.zahl = zahl
-        self.farbIndex = Farben.index(farbe)
-        self.zahlIndex = Zahlen.index(zahl)
-        self.index = (self.farbIndex, self.zahlIndex)
-    
-    def ist(self, farbeOderZahl):
-        return self.farbe == farbeOderZahl or self.zahl == farbeOderZahl
-    
-    def __eq__(self, andere):
-        if andere is None:
-            return False
-        return self.farbe == andere.farbe and self.zahl == andere.zahl
-    
-    @staticmethod
-    def komplettesDeck():
-        stapel = []
-        for farbe, zahl in itertools.product(Farben, Zahlen):
-            for i in range(Karte.häufigkeit(farbe, zahl)):
-                stapel.append(Karte(farbe, zahl))
-        import numpy
-        numpy.random.shuffle(stapel)
-        return stapel
-    
-    
-    @staticmethod
-    def häufigkeit(farbe, zahl):
-        if zahl == 1:
-            return 3
-        elif zahl == 5:
-            return 1
-        else:
-            return 2
-    
-    
-    gesamtzahl = 50
-
-    def __str__(self):
-        return "{}e {}".format(self.farbe.title(), self.zahl)
-
-    __repr__ = __str__
-
 class HanabiSpiel:
+    """Verwaltet die Spieldaten und kümmert sich um Einhaltung der Regeln."""
     
     hinweisPlättchen = 8
     
     def __init__(self, spielerAnzahl, SpielerKlasse):
+        """Spiel mit gegebener *spielerAnzahl* und KI-Klasse *SpielerKlasse* erstellen."""
         self.SpielerKlasse = SpielerKlasse
         self.setSpielerAnzahl(spielerAnzahl)
         self.initSpieler()
         
     def setSpielerAnzahl(self, anzahl):
+        """Spieleranzahl ändern.
+        
+        Danach muss initSpieler() aufgerufen werden, um neue KI-Spieler zu erstellen.
+        """
         self.spielerAnzahl = anzahl
         self.kartenProSpieler = 5 if anzahl <= 3 else 4
     
     def initSpieler(self):
+        """Erstellt neue KI-Spielerobjekte."""
         self.spieler = []
         for spielerNummer in range(1, self.spielerAnzahl+1):
             self.spieler.append(self.SpielerKlasse(self, spielerNummer))
         self.kartenGeben()
     
     def kartenGeben(self):
-        print("****** NEUES SPIEL *****")
-        self.handKarten = {}
+        """Startet ein neues Spiel durch Austeilen der Karten und rücksetzen aller Daten."""
+        
         self.abwurfStapel = []
         self.ablage = {farbe: [] for farbe in Farben }
         self.verfügbareHinweise = HanabiSpiel.hinweisPlättchen
@@ -83,19 +46,25 @@ class HanabiSpiel:
         self.aktuellerSpielzug = 1
         self.letzterSpielzug = 0
         self.spielEnde = False
+        self.handKarten = {}
+        # Karten austeilen
         for spieler in self.spieler:
             startKarten = self.stapel[-self.kartenProSpieler:]
             del self.stapel[-self.kartenProSpieler:]
             self.handKarten[spieler] = startKarten
+        # Spieler-KIs benachrichtigen dass neues Spiel angefangen hat
         for spieler in self.spieler:
             spieler.neuesSpiel()
     
-    
     def zieheKarte(self, spieler, position):
-        """Ersetzt Karte von *spieler* an Position *position* durch eine neue vom
-        Stapel und benachrichtigt alle Spieler.
+        """Ersetzt Karte von *spieler* an Position *position* durch eine neue vom Stapel.
+        
+        Wenn es keine Karten mehr gibt (letzte Runde), wird die entsprechende Handkarte durch
+        "None" ersetzt. Die Funktion benachrichtigt nach dem Ziehen alle Spieler über deren
+        "neueKarte"-Funktion.
         """
         if len(self.stapel) == 1:
+            # noch eine Runde
             self.letzterSpielzug = self.aktuellerSpielzug + self.spielerAnzahl
         neueKarte = self.stapel.pop() if len(self.stapel) > 0 else None
         self.handKarten[spieler][position] = neueKarte
@@ -103,6 +72,7 @@ class HanabiSpiel:
             mitspieler.neueKarte(spieler, position) # mitspieler benachrichtigen
 
     def passtAufAblage(self, karte):
+        """Gibt an ob die *karte* derzeit auf die Ablage passt."""
         if karte is None:
             return False
         stapel = self.ablage[karte.farbe]
@@ -112,18 +82,29 @@ class HanabiSpiel:
             return stapel[-1].zahl == karte.zahl - 1
     
     def punktzahl(self):
+        """Derzeitige Punktzahl: Summe der abgelegten Karten oder 0 bei drei Fehlern."""
         if self.blitze == 3:
             return 0
         return sum(len(stapel) for stapel in self.ablage.values())
     
     def autoSpiel(self):
+        """Lässt das Spiel per KI bis zum Ende durchlaufen."""
         while True:
             self.autoSpielzug()
     
     def autoSpielzug(self):
+        """Macht einen Spielzug per KI."""
         self.spielzug(self.aktuellerSpieler.macheSpielzug())
     
     def spielzug(self, zug):
+        """Spielzug *zug* (Instanz von spielzug.Spielzug) ausführen.
+        
+        Falls durch diesen Zug das Spiel endet, wird eine SpielEnde-Ausnahme geworfen.
+        Ist das Spiel schon zu Ende oder der Zug ungültig, wird spielzug.UngültigerZug
+        geworfen.
+        Nach dem Zug wird der aktuelle Spielzug hochgezählt und der nächste Spieler ist
+        an der Reihe.
+        """
         if self.spielEnde:
             from hanabi.spielzug import UngültigerZug
             raise UngültigerZug("Das Spiel ist zu Ende!")

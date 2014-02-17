@@ -237,7 +237,7 @@ class SpielerGraphicsItem(QtGui.QGraphicsRectItem):
             hinweise = set()
             for hinweis in self.spieler.hinweisInfos:
                 if hinweis.spieler is self.spieler:
-                    if hinweis.spielzug >= self.spieler.infos[self.spieler].karten[i].seit:
+                    if hinweis.spielzug >= self.spieler.infos[self.spieler].kartenInfos[i].seit:
                         if i in hinweis.positionen:
                             hinweise.add(hinweis.art)
             self.kartenItems[i].infoItem.setText("/".join(str(h) for h in hinweise))
@@ -310,7 +310,7 @@ WS kritisch: {wskritisch}
         super().__init__()
 
     def setKarte(self, info, pos):
-        self.setText(self.infoText.format(spielzug=info.karten[pos].seit,
+        self.setText(self.infoText.format(spielzug=info.kartenInfos[pos].seit,
         info=info.infoMatrix(pos),
         wspasst=info.wsPasst(pos),
         wsegal=info.wsEgal(pos),
